@@ -1,0 +1,68 @@
+import arcpy
+import os
+import smtplib
+
+sender_email = "testgrmailpython@gmail.com"
+rec_email = "contiyo@gmail.com"
+#Fill the password to send mail
+password = ""
+message = "Script was successful"
+arcpy.env.workspace = r"C:\GIS_Projects\Shapefiles\New File Geodatabase.gdb"
+path = r'C:\GIS_Projects\Shapefiles'
+files = []
+outLocation = r"C:\GIS_Projects\Shapefiles\New File Geodatabase.gdb"
+
+#Lists files in the path
+testing = os.listdir(path)
+
+#Lists files ending with .shp in a new list
+for x in testing:
+    if x.endswith("shp"):
+        files.append(x[:-4])
+        print ("New shapefile with name {} found on your PATH".format(files))
+print (files)
+
+#Creates Feature Classes from Shapefiles into the output location
+for x in files:
+    arcpy.FeatureClassToFeatureClass_conversion(in_features="C:/GIS_Projects/Shapefiles/{}.shp".format(x),
+                                                out_path="C:/GIS_Projects/Shapefiles/New File Geodatabase.gdb",
+                                                out_name="{}".format(x))
+    print ("The {} Feature Class has been created.".format(x))
+    
+    
+#Add fields and update them to Feature Classes
+
+datasetList = arcpy.ListFeatureClasses()
+
+for data in datasetList:
+    arcpy.AddField_management("{}".format(data), "Created_By", "TEXT")
+    print ("Field -Created_By- as -TEXT- added in Feature Class {}".format(data))
+
+for data in datasetList:
+    with arcpy.da.UpdateCursor("{}".format(data), "Created_By") as cursor:
+        for row in cursor:
+            row[0] = "Kostas"
+            print ("Field Value updated to {}.".format(row[0]))
+
+            cursor.updateRow(row)
+
+#Make a buffer for each Feature Class
+for data in datasetList:
+    arcpy.Buffer_analysis(data, r"C:\GIS_Projects\Shapefiles\New File Geodatabase.gdb" + "\{}_buffer".format(data),
+                          "100 Kilometers")
+    print ("The {} Buffer Feature Layer has been created.".format(data))
+
+featureclasses = arcpy.ListFeatureClasses(outLocation)
+
+print (featureclasses)
+
+#Sent Mail when script is done
+
+server = smtplib.SMTP('smtp.gmail.com', 587)
+server.starttls()
+server.login(sender_email, password)
+print ("Login to email was successful")
+server.sendmail(sender_email,rec_email,message)
+print ("Email was successfully send to", rec_email)
+
+print ("Finished!")
